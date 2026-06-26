@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: github_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: github_analytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d github_analytics"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./api
+    container_name: github_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password123@db:5432/github_analytics
+    depends_on:
+      db:
+        condition: service_healthy
+
+  dashboard:
+    build: ./dashboard
+    container_name: github_dashboard
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
